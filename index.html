@@ -14,7 +14,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;background:
 #hud .tl{position:absolute;left:max(10px,env(safe-area-inset-left));top:max(8px,env(safe-area-inset-top));text-shadow:0 0 6px #000,0 0 2px #000;line-height:1.5}
 #hud .tl b{color:#e8c76a}
 #hud .tr{position:absolute;right:max(10px,env(safe-area-inset-right));top:max(8px,env(safe-area-inset-top));display:flex;gap:6px;pointer-events:auto}
-#hud .bl{position:absolute;left:max(12px,env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom));text-shadow:0 0 6px #000}
+#hud .bl{position:absolute;right:max(10px,env(safe-area-inset-right));top:calc(max(8px,env(safe-area-inset-top)) + 46px);text-align:right;text-shadow:0 0 6px #000}
 .hb{background:rgba(20,16,14,.65);border:1px solid #5a4a3a;color:#d8d2c4;border-radius:6px;padding:6px 10px;font-size:inherit;cursor:pointer;font-family:inherit}
 .hb:active{background:#4a3a2a}
 #stam{width:min(34vw,180px);height:8px;background:rgba(0,0,0,.6);border:1px solid #4a3a2a;border-radius:4px;overflow:hidden;margin-top:4px}
@@ -29,6 +29,9 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;background:
 @keyframes tin{from{opacity:0;transform:translateY(-8px)}to{opacity:1}}
 #touch{position:fixed;inset:0;display:none;z-index:4;pointer-events:none}
 #joyzone{position:absolute;left:0;top:0;width:55%;height:100%;pointer-events:auto}
+#dpad{position:absolute;bottom:max(14px,env(safe-area-inset-bottom));display:none;grid-template-columns:repeat(3,var(--bs));grid-template-rows:repeat(3,var(--bs));gap:calc(var(--bs)*.05);pointer-events:auto;touch-action:none}
+#dpad .tb{pointer-events:none;border-radius:18%}
+#dpad .u{grid-area:1/2}#dpad .l{grid-area:2/1}#dpad .r{grid-area:2/3}#dpad .d{grid-area:3/2}
 #joybase{position:absolute;border-radius:50%;border:2px solid rgba(220,200,150,.4);background:rgba(220,200,150,.08);display:none}
 #joystick{position:absolute;border-radius:50%;background:rgba(220,200,150,.35);border:2px solid rgba(240,220,170,.6)}
 #btns{position:absolute;bottom:max(14px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(2,var(--bs));grid-template-rows:repeat(2,var(--bs));gap:calc(var(--bs)*.18);pointer-events:auto}
@@ -77,6 +80,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;background:
 <button class="hb" id="skipbtn"></button>
 <div id="toast"></div>
 <div id="touch">
+ <div id="dpad"><button class="tb u" data-d="u">▲</button><button class="tb l" data-d="l">◀</button><button class="tb r" data-d="r">▶</button><button class="tb d" data-d="d">▼</button></div>
  <div id="joyzone"></div><div id="joybase"><div id="joystick"></div></div>
  <div id="btns">
   <button class="tb" id="tbL">F<small></small></button>
@@ -103,7 +107,7 @@ const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v)
 /* ===================== 설정 ===================== */
 const DEF_SET={master:.8,music:.6,sfx:.9,monster:.9,ambient:.7,steps:.7,cut:.9,
  res:1,shake:1,lightQ:1,shadows:true,particles:1,vfx:true,camSmooth:.12,brightness:1,glow:1,
- moveSens:1,joySize:1,btnSize:1,btnSide:'right',btnOpacity:.7,touchSens:1,
+ moveSens:1,ctlMode:'joystick',joySize:1,btnSize:1,btnSide:'right',btnOpacity:.7,touchSens:1,
  subs:true,autoAdv:false,allowSkip:true,hud:true,lang:'ko',autosave:60,
  keys:{up:'KeyW',down:'KeyS',left:'KeyA',right:'KeyD',interact:'KeyE',drop:'KeyQ',light:'KeyF',run:'ShiftLeft',pause:'Escape',skip:'Space'}};
 let S=Object.assign({},DEF_SET,store.get('eth_settings_v1',{}));
@@ -114,12 +118,12 @@ const L=(ko,en)=>S.lang==='en'?en:ko;
 /* ===================== 상수 ===================== */
 const TS=32;
 const DIFFS={
- veryeasy:{ko:'아주 쉬움',en:'Very Easy',ps:1.15,ms:.85,det:.7,stun:1.8,glow:1.4,reg:1.6,lr:1.15,snd:.8,cap:1,reveal:true,drain:.7},
- easy:{ko:'쉬움',en:'Easy',ps:1.07,ms:.93,det:.85,stun:1.3,glow:1.2,reg:1.3,lr:1.08,snd:.9,cap:0,reveal:true,drain:.85},
- normal:{ko:'보통',en:'Normal',ps:1,ms:1,det:1,stun:1,glow:1,reg:1,lr:1,snd:1,cap:0,reveal:false,drain:1},
- hard:{ko:'어려움',en:'Hard',ps:1,ms:1.12,det:1.2,stun:.8,glow:1,reg:.8,lr:.88,snd:1.1,cap:0,reveal:false,drain:1.1},
- nightmare:{ko:'악몽',en:'Nightmare',ps:1,ms:1.25,det:1.4,stun:.65,glow:.7,reg:.65,lr:.78,snd:1.3,cap:0,reveal:false,drain:1.2},
- impossible:{ko:'불가능',en:'Impossible',ps:.98,ms:1.38,det:1.7,stun:.5,glow:.5,reg:.5,lr:.65,snd:1.6,cap:0,reveal:false,drain:1.3}
+ veryeasy:{ko:'아주 쉬움',en:'Very Easy',ps:1.15,ms:.85,det:.7,stun:1.8,glow:1.4,reg:1.6,lr:1.15,snd:.8,cap:1,reveal:true,drain:.7,lamp:1.7},
+ easy:{ko:'쉬움',en:'Easy',ps:1.07,ms:.93,det:.85,stun:1.3,glow:1.2,reg:1.3,lr:1.08,snd:.9,cap:0,reveal:true,drain:.85,lamp:1.35},
+ normal:{ko:'보통',en:'Normal',ps:1,ms:1,det:1,stun:1,glow:1,reg:1,lr:1,snd:1,cap:0,reveal:false,drain:1,lamp:1},
+ hard:{ko:'어려움',en:'Hard',ps:1,ms:1.12,det:1.2,stun:.8,glow:1,reg:.8,lr:.88,snd:1.1,cap:0,reveal:false,drain:1.1,lamp:.75},
+ nightmare:{ko:'악몽',en:'Nightmare',ps:1,ms:1.25,det:1.4,stun:.65,glow:.7,reg:.65,lr:.78,snd:1.3,cap:0,reveal:false,drain:1.2,lamp:.55},
+ impossible:{ko:'불가능',en:'Impossible',ps:.98,ms:1.38,det:1.7,stun:.5,glow:.5,reg:.5,lr:.65,snd:1.6,cap:0,reveal:false,drain:1.3,lamp:.4}
 };
 const DIFF_ORDER=['veryeasy','easy','normal','hard','nightmare','impossible'];
 // 층별 규칙 (key: 층 번호)
@@ -441,6 +445,7 @@ function floorCfg(){
  if(G.mode==='custom'){const c=G.custom;
   b.w=Math.round(b.w*c.mapSize);b.h=Math.round(b.h*c.mapSize);
   if(c.keys>0)b.keys=c.keys;if(c.breakers>=0)b.br=c.breakers;if(c.abil>=0)b.ab=c.abil;if(c.mon>0)b.monFixed=c.mon;b.traps=c.traps;}
+ b.lamps=Math.max(2,Math.round(b.w/7*G.D.lamp));
  return b;
 }
 function rollAbil(rng,n,forceClone){
@@ -489,9 +494,9 @@ function buildLevel(seed){
  let st=null;{const c=[];for(let y=best.y;y<best.y+best.h;y++)for(let x=best.x;x<best.x+best.w;x++)if(tileFree(M,x,y)&&wallSide(M,x,y)>=0&&!nearDoorT(M,x,y,2)&&!nearFurn(M,x,y))c.push([x,y]);
   if(!c.length){for(let y=best.y;y<best.y+best.h;y++)for(let x=best.x;x<best.x+best.w;x++)if(tileFree(M,x,y)&&wallSide(M,x,y)>=0&&!nearDoorT(M,x,y,1))c.push([x,y])}
   st=pick(rng,c)||[best.x,best.y]}
- M.furn[idx(st[0],st[1])]=G.floor===1?FURN.FDOOR:FURN.STAIRS;G.stairs={x:st[0],y:st[1],room:best};occ.add(idx(st[0],st[1]));
+ if(!M.boss){M.furn[idx(st[0],st[1])]=G.floor===1?FURN.FDOOR:FURN.STAIRS;G.stairs={x:st[0],y:st[1],room:best};occ.add(idx(st[0],st[1]))}else G.stairs=null;
  // 스태핑 후 연결 재검증
- {let sx2=-1,sy2=-1;for(let i=0;i<W*M.h&&sx2<0;i++)if(M.tiles[i]===0&&!M.furn[i]){sx2=i%W;sy2=(i/W)|0}const f=passableFlood(M,sx2,sy2);if(f.n!==freeCount(M)){M.furn[idx(st[0],st[1])]=0;M.furn[idx(st[0],st[1])]=0;return buildLevel(seed+1)}}
+ if(!M.boss){let sx2=-1,sy2=-1;for(let i=0;i<W*M.h&&sx2<0;i++)if(M.tiles[i]===0&&!M.furn[i]){sx2=i%W;sy2=(i/W)|0}const f=passableFlood(M,sx2,sy2);if(f.n!==freeCount(M)){M.furn[idx(st[0],st[1])]=0;M.furn[idx(st[0],st[1])]=0;return buildLevel(seed+1)}}
  const free=[];for(let y=1;y<M.h-1;y++)for(let x=1;x<W-1;x++)if(tileFree(M,x,y)&&!nearDoorT(M,x,y,1)&&D[idx(x,y)]>=0)free.push([x,y]);
  const spread=(arr,n,minD,list)=>{const out=[];shuffle(rng,arr);for(const t of arr){if(out.length>=n)break;if(occ.has(idx(t[0],t[1])))continue;
    let ok=true;for(const o of out)if(dist(o[0],o[1],t[0],t[1])<minD){ok=false;break}if(!ok)continue;
@@ -502,19 +507,22 @@ function buildLevel(seed){
  const roomOf=t=>M.rooms[M.roomAt[idx(t[0],t[1])]];
  if(!M.boss){
   G.keyNeed=cfg.keys;G.brNeed=cfg.br;
-  const nk=cfg.keys+2,keyT=spread(free.filter(t=>{const r=roomOf(t);return r&&!r.corr||rng()<.25}),nk,Math.max(5,Math.sqrt(W*M.h)/8));
+  // 5) 시작 지점의 쪽지: 이 층에서 새로 정해진 괴물 능력치와 저주를 알려 준다
+  {const nb=shuffle(rng,[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]);let nt=null;for(const [dx,dy] of nb){const x=sx+dx,y=sy+dy;if(tileFree(M,x,y)&&!occ.has(idx(x,y))){nt=[x,y];break}}
+   if(nt){occ.add(idx(nt[0],nt[1]));itemOf('note',nt,{read:false})}}
+  const nk=cfg.keys,keyT=spread(free.filter(t=>{const r=roomOf(t);return r&&!r.corr||rng()<.25}),nk,Math.max(5,Math.sqrt(W*M.h)/8));
   keyT.forEach(t=>itemOf('key',t,{glow:1}));
   if(keyT.length<nk){for(const t of shuffle(rng,free.slice())){if(keyT.length>=nk)break;if(!occ.has(idx(t[0],t[1]))){keyT.push(t);occ.add(idx(t[0],t[1]));itemOf('key',t,{glow:1})}}}
   G.keyTotal=keyT.length;
   spread(perim.slice(),cfg.br,Math.max(8,Math.sqrt(W*M.h)/5)).forEach(t=>itemOf('breaker',t,{pulled:false,side:wallSide(M,t[0],t[1])}));
-  spread(perim.slice(),cfg.lamps,6).forEach(t=>itemOf('lamp',t,{mounted:true,lit:true,side:wallSide(M,t[0],t[1])}));
+  spread(perim.slice(),cfg.lamps,4.5).forEach(t=>itemOf('lamp',t,{mounted:true,lit:true,side:wallSide(M,t[0],t[1])}));
   spread(free.slice(),cfg.traps,6).forEach(t=>itemOf('trap',t,{placed:false,armed:false,sprung:false,safe:false}));
   // 문서
   if(['story','custom','practice'].includes(G.mode)&&typeof DOCS!=='undefined'){const ds=DOCS.filter(d=>d.floor===G.floor);
    spread(free.slice(),ds.length,7).forEach((t,i)=>itemOf('doc',t,{doc:ds[i].id,read:false}))}
  }else{
   G.keyNeed=0;G.brNeed=0;G.keyTotal=0;
-  spread(perim.slice(),4,10).forEach(t=>itemOf('lamp',t,{mounted:true,lit:true,side:wallSide(M,t[0],t[1])}));
+  spread(perim.filter(t=>t[0]>=M.hall.x&&t[0]<M.hall.x+M.hall.w&&t[1]>=M.hall.y&&t[1]<M.hall.y+M.hall.h),clamp(Math.round(8*G.D.lamp),3,12),6).forEach(t=>itemOf('lamp',t,{mounted:true,lit:true,side:wallSide(M,t[0],t[1])}));
   // 덫 4개: 서로 멀리
   const tt=spread(free.filter(t=>dist(t[0],t[1],M.front.x,M.front.y)>6).slice(),4,9);
   if(tt.length<4){for(const t of shuffle(rng,free.slice())){if(tt.length>=4)break;if(!tt.some(o=>o[0]===t[0]&&o[1]===t[1])&&!occ.has(idx(t[0],t[1]))){tt.push(t);occ.add(idx(t[0],t[1]))}}}
@@ -602,19 +610,20 @@ function shake(a,t){G.cam.shake=Math.max(G.cam.shake,a*S.shake);G.cam.shakeT=t||
 /* ===================== 상호작용 ===================== */
 function findTarget(){
  if(!G||!G.player||G.state!=='play')return null;const p=G.player,M=G.map;let best=null,bd=9;
- const consider=(kind,o,x,y,rng,label)=>{const d=dist(p.x,p.y,x,y);if(d<rng&&d<bd){bd=d;best={kind,o,label}}};
+ const consider=(kind,o,x,y,rng,label,bias)=>{const d0=dist(p.x,p.y,x,y),d=d0*(bias||1);if(d0<rng&&d<bd){bd=d;best={kind,o,label}}}; // bias<1: 가까이 겹쳐 있어도 이 대상을 우선
  // 문
  for(let j=-2;j<=2;j++)for(let i=-2;i<=2;i++){const tx=Math.floor(p.x)+i,ty=Math.floor(p.y)+j;if(tx<0||ty<0||tx>=M.w||ty>=M.h)continue;const d=doorAtT(M,tx,ty);if(d){
    const dd=dist(p.x,p.y,d.x+.5,d.y+.5);const fx=Math.cos(p.ang),fy=Math.sin(p.ang);const dot=((d.x+.5-p.x)*fx+(d.y+.5-p.y)*fy)/Math.max(dd,.01);
    if(dd<1.45&&(dot>.2||dd<.9)&&dd<bd){bd=dd;best={kind:'door',o:d,label:d.open?L('문 닫기','Close door'):L('문 열기','Open door')}}}}
  for(const it of G.items){
-  if(it.type==='key')consider('key',it,it.x,it.y,1.15,L('열쇠 줍기','Take key'));
+  if(it.type==='key')consider('key',it,it.x,it.y,1.15,L('열쇠 줍기','Take key'),.45);
   else if(it.type==='doc'&&!it.gone)consider('doc',it,it.x,it.y,1.15,L('읽기','Read'));
   else if(it.type==='trap'&&!it.placed&&!it.gone)consider('trap',it,it.x,it.y,1.15,L('덫 줍기','Pick up trap'));
   else if(it.type==='lamp')consider('lamp',it,it.x,it.y,it.mounted?1.3:1.1,it.mounted?L('전등 뜯어내기','Rip off lamp'):L('전등 줍기','Pick up lamp'));
-  else if(it.type==='breaker'&&!it.pulled)consider('breaker',it,it.x,it.y,1.3,L('차단기 내리기','Pull breaker'));
+  else if(it.type==='note')consider('note',it,it.x,it.y,1.25,L('쪽지 읽기','Read the note'),.8);
+  else if(it.type==='breaker'&&!it.pulled)consider('breaker',it,it.x,it.y,1.3,L('차단기 내리기','Pull breaker'),.6);
  }
- const s=G.stairs;if(s){const dd=dist(p.x,p.y,s.x+.5,s.y+.5);if(dd<1.8&&dd<bd+.4){best={kind:'stairs',o:s,label:G.floor===1&&!G.bossMode?L('현관문 열기','Open the front door'):L('계단 이용','Use stairs')}}}
+ const s=G.stairs;if(s){const dd=dist(p.x,p.y,s.x+.5,s.y+.5);if(dd<1.8&&dd<bd+.4&&!(best&&(best.kind==='key'||best.kind==='breaker'))){best={kind:'stairs',o:s,label:G.floor===1&&!G.bossMode?L('현관문 열기','Open the front door'):L('계단 이용','Use stairs')}}}
  if(G.map.boss&&G.map.front){}
  return best;
 }
@@ -633,6 +642,7 @@ function doInteract(){
  else if(t.kind==='breaker'){t.o.pulled=true;G.br++;STATS.breakers++;saveStats();if(STATS.breakers>=15)giveAch('breaker');G.flash=1.6;SFX.breaker(1);shake(5,.5);
   emitSound(t.o.x,t.o.y,26,'breaker');burst(t.o.x,t.o.y,30,'#9fd8ff',3,.8);toast(L('차단기 ','Breaker ')+G.br+'/'+G.brNeed);checkStairs();
   if(G.br>=G.brNeed)toast(L('계단의 전기가 끊겼다','The stairs are no longer electrified'))}
+ else if(t.kind==='note'){openNote(t.o)}
  else if(t.kind==='stairs'){useStairs()}
 }
 function checkStairs(){
@@ -653,7 +663,7 @@ function dropItem(){
 }
 function toggleLamp(){const p=G.player;if(G.state!=='play')return;if(p.hold&&p.hold.type==='lamp'){p.hold.lit=!p.hold.lit;SFX.flicker()}else toast(L('들고 있는 전등이 없다','You are not holding a lamp'))}
 /* ===================== 플레이어 업데이트 ===================== */
-const INP={dx:0,dy:0,run:false,keys:{},joy:{x:0,y:0,on:false},touchRun:false};
+const INP={dx:0,dy:0,run:false,keys:{},joy:{x:0,y:0,on:false},dpad:{u:0,d:0,l:0,r:0},touchRun:false};
 function collides(M,x,y,r){const x0=Math.floor(x-r),x1=Math.floor(x+r),y0=Math.floor(y-r),y1=Math.floor(y+r);for(let j=y0;j<=y1;j++)for(let i=x0;i<=x1;i++)if(solidAt(M,i,j))return true;return false}
 function movePlayer(dx,dy){const p=G.player,M=G.map,r=.27;
  if(!collides(M,p.x+dx,p.y,r))p.x+=dx;else{const s=Math.sign(dx);let a=Math.abs(dx);while(a>.01){a/=2;if(!collides(M,p.x+s*a,p.y,r)){p.x+=s*a;break}}}
@@ -663,6 +673,7 @@ function updatePlayer(dt){
  let ix=0,iy=0;const K=S.keys,k=INP.keys;
  if(k[K.left]||k.ArrowLeft)ix--;if(k[K.right]||k.ArrowRight)ix++;if(k[K.up]||k.ArrowUp)iy--;if(k[K.down]||k.ArrowDown)iy++;
  if(INP.joy.on){ix+=INP.joy.x;iy+=INP.joy.y}
+ if(INP.dpad.l)ix--;if(INP.dpad.r)ix++;if(INP.dpad.u)iy--;if(INP.dpad.d)iy++;
  const mag=Math.hypot(ix,iy);if(mag>1){ix/=mag;iy/=mag}
  const wantRun=(k[K.run]||k.ShiftRight||INP.touchRun)&&mag>.1;
  const useSt=!(G.mode==='custom'&&!G.custom.stamina);
@@ -684,7 +695,7 @@ function updatePlayer(dt){
 }
 function playerBright(){
  const p=G.player;if(p.hold&&p.hold.type==='lamp'&&p.hold.lit)return true;if(G.flash>0)return true;
- for(const it of G.items){if(it.type==='lamp'&&!it.mounted&&it.lit&&dist(p.x,p.y,it.x,it.y)<4.5)return true;if(it.type==='key'&&dist(p.x,p.y,it.x,it.y)<2.3)return true}
+ for(const it of G.items){if(it.type==='lamp'&&it.lit&&dist(p.x,p.y,it.x,it.y)<(it.mounted?3.4:4.5))return true;if(it.type==='key'&&dist(p.x,p.y,it.x,it.y)<2.3)return true}
  return false;
 }
 /* ===================== 덫 / 사망 ===================== */
@@ -945,7 +956,7 @@ function drawWorld(){
   if(it.type==='key'){spr=SP.items.key;oy=Math.sin(t*3+it.id)*ts*.05;s=.9;X.fillStyle='rgba(0,0,0,.35)';X.beginPath();X.ellipse(sx,sy+ts*.2,ts*.2,ts*.07,0,0,6.3);X.fill()}
   else if(it.type==='lamp'){if(it.mounted){spr=SP.items.lampM;const sd=it.side;ox=[0,.4,0,-.4][sd]*ts;oy=[-.4,0,.35,0][sd]*ts;if(sd===2)oy=ts*.15}else spr=it.lit?SP.items.lampD:SP.items.lampOff}
   else if(it.type==='trap'){spr=it.sprung?SP.items.trapS:it.armed?SP.items.trapA:SP.items.trap}
-  else if(it.type==='doc'){spr=SP.items.doc}
+  else if(it.type==='doc'||it.type==='note'){spr=SP.items.doc}
   else if(it.type==='breaker'){spr=it.pulled?SP.items.breakerD:SP.items.breaker;const sd=it.side;ox=[0,.4,0,-.4][sd]*ts;oy=[-.38,0,.2,0][sd]*ts}
   if(spr){const w=ts*s;X.drawImage(spr,sx-w/2+ox,sy-w/2+oy,w,w)}}
  // 계단/현관 표시 (전류)
@@ -1002,6 +1013,7 @@ function visPoly(wx,wy,r){
   pts.push([wx+c*Math.min(d,r+.4),wy+s*Math.min(d,r+.4)])}
  return pts;
 }
+function lampPos(it){if(!it.mounted)return [it.x,it.y];const o=[[0,-.28],[.28,0],[0,.28],[-.28,0]][it.side]||[0,0];return [it.x+o[0],it.y+o[1]]}
 function addLight(wx,wy,r,power,rays){
  const q=lightC.width/VW,[sx,sy]=w2s(wx,wy),R=r*TSP*q,cx=sx*q,cy=sy*q;
  LX.save();
@@ -1020,13 +1032,15 @@ function drawLighting(){
  if(p.alpha>0.05){
   if(p.hold&&p.hold.type==='lamp'&&p.hold.lit){const fl=1+Math.sin(t*23)*.012+Math.sin(t*7.7)*.02;addLight(p.x,p.y,6.6*D.lr*(eye?.72:1)*cm*fl*G.csLamp,.97*pw,true)}
   else addLight(p.x,p.y,(1.7+G.csLamp-1)*(eye?.8:1),.5*pw,false)}
- for(const it of G.items){if(it.type==='lamp'&&!it.mounted&&it.lit){const d=dist(it.x,it.y,G.cam.x,G.cam.y);if(d<14)addLight(it.x,it.y,5.4*D.lr*(eye?.72:1)*cm,.95*pw,true)}}
+ for(const it of G.items){if(it.type==='lamp'&&it.lit){const d=dist(it.x,it.y,G.cam.x,G.cam.y);if(d<15){const lp=lampPos(it);addLight(lp[0],lp[1],(it.mounted?4.6:5.4)*D.lr*(eye?.72:1)*cm,.95*pw,true)}}}
  if(G.flash>0&&G.flashPos){addLight(G.flashPos.x,G.flashPos.y,12*Math.min(1,G.flash),.95*Math.min(1,G.flash*1.2),true)}
  else if(G.flash>0)addLight(p.x,p.y,10*Math.min(1,G.flash),.9*Math.min(1,G.flash*1.2),true);
  // 발광 아이템 (열쇠)
  const gl=D.glow*S.glow*(eye?.5:1);
  for(const it of G.items){if(it.type==='key'){const d=dist(it.x,it.y,G.cam.x,G.cam.y);if(d<16)addLight(it.x,it.y,(1.5+.2*Math.sin(t*3+it.id))*gl,.9*(eye?.6:1),false)}
   else if(it.type==='doc'&&!it.gone){}}
+ if(G.stairs&&!G.bossMode){const s=G.stairs;if(dist(s.x+.5,s.y+.5,G.cam.x,G.cam.y)<20)addLight(s.x+.5,s.y+.5,(2.8+.25*Math.sin(t*2.2))*S.glow*(eye?.75:1),.92*(eye?.75:1),false)}
+ for(const it of G.items){if(it.type==='trap'&&it.armed&&!it.sprung&&dist(it.x,it.y,G.cam.x,G.cam.y)<16)addLight(it.x,it.y,(1.0+.12*Math.sin(t*5+it.id))*S.glow*(eye?.7:1),.7*(eye?.7:1),false);else if(it.type==='note'&&!it.read&&dist(it.x,it.y,G.cam.x,G.cam.y)<10)addLight(it.x,it.y,1.1*S.glow*(eye?.7:1),.55,false)}
  if(G.csSpots)for(const s of G.csSpots)addLight(s.x,s.y,s.r,s.p,false);
  LX.globalCompositeOperation='source-over';
  X.save();X.imageSmoothingEnabled=true;X.drawImage(lightC,0,0,VW,VH);X.restore();
@@ -1034,7 +1048,9 @@ function drawLighting(){
  if(S.vfx){X.save();X.globalCompositeOperation='lighter';
   for(const it of G.items){if(it.type==='key'){const [sx,sy]=w2s(it.x,it.y);if(sx<-80||sy<-80||sx>VW+80||sy>VH+80)continue;const r=TSP*(1.3+.15*Math.sin(t*3+it.id))*gl,g=X.createRadialGradient(sx,sy,0,sx,sy,r);g.addColorStop(0,`rgba(255,215,90,${.5*(eye?.55:1)})`);g.addColorStop(1,'rgba(255,200,60,0)');X.fillStyle=g;X.fillRect(sx-r,sy-r,r*2,r*2)}}
   if(p.hold&&p.hold.type==='lamp'&&p.hold.lit){const [sx,sy]=w2s(p.x,p.y),r=TSP*5*(eye?.75:1),g=X.createRadialGradient(sx,sy,0,sx,sy,r);g.addColorStop(0,'rgba(255,170,80,.14)');g.addColorStop(1,'rgba(255,150,60,0)');X.fillStyle=g;X.fillRect(sx-r,sy-r,r*2,r*2)}
-  for(const it of G.items){if(it.type==='lamp'&&!it.mounted&&it.lit){const [sx,sy]=w2s(it.x,it.y),r=TSP*4.2,g=X.createRadialGradient(sx,sy,0,sx,sy,r);g.addColorStop(0,'rgba(255,170,80,.12)');g.addColorStop(1,'rgba(255,150,60,0)');X.fillStyle=g;X.fillRect(sx-r,sy-r,r*2,r*2)}}
+  if(G.stairs&&!G.bossMode){const s=G.stairs,[sx,sy]=w2s(s.x+.5,s.y+.5);if(sx>-300&&sy>-300&&sx<VW+300&&sy<VH+300){const col=G.stairsOpen?'110,255,160':(G.keys>=G.keyNeed&&G.br<G.brNeed)?'130,200,255':'255,130,90',r=TSP*(2.6+.25*Math.sin(t*2.2)),g=X.createRadialGradient(sx,sy,0,sx,sy,r);g.addColorStop(0,`rgba(${col},${.42*(eye?.7:1)})`);g.addColorStop(.5,`rgba(${col},${.14*(eye?.7:1)})`);g.addColorStop(1,`rgba(${col},0)`);X.fillStyle=g;X.fillRect(sx-r,sy-r,r*2,r*2)}}
+  for(const it of G.items){if(it.type==='trap'&&it.armed&&!it.sprung){const [sx,sy]=w2s(it.x,it.y);if(sx<-60||sy<-60||sx>VW+60||sy>VH+60)continue;const r=TSP*(.85+.1*Math.sin(t*5+it.id)),g=X.createRadialGradient(sx,sy,0,sx,sy,r);g.addColorStop(0,`rgba(255,40,30,${.55*(eye?.7:1)})`);g.addColorStop(1,'rgba(255,30,20,0)');X.fillStyle=g;X.fillRect(sx-r,sy-r,r*2,r*2)}}
+  for(const it of G.items){if(it.type==='lamp'&&it.lit){const [lx,ly]=lampPos(it),[sx,sy]=w2s(lx,ly),r=TSP*4.2,g=X.createRadialGradient(sx,sy,0,sx,sy,r);g.addColorStop(0,'rgba(255,170,80,.12)');g.addColorStop(1,'rgba(255,150,60,0)');X.fillStyle=g;X.fillRect(sx-r,sy-r,r*2,r*2)}}
   if(G.flash>0){X.fillStyle=`rgba(150,200,255,${Math.min(.25,G.flash*.15)})`;X.fillRect(0,0,VW,VH)}
   X.restore()}
 }
@@ -1088,6 +1104,15 @@ function openDoc(it){
  const d=DOCS.find(x=>x.id===it.doc);if(!d)return;it.read=true;SFX.read();
  if(!PROG.docs[d.id]){PROG.docs[d.id]=1;saveProg();if(Object.keys(PROG.docs).length>=8)giveAch('reader')}
  G.state='read';G.readDoc=d;showScreen('doc',d);
+}
+function openNote(it){
+ it.read=true;SFX.read();
+ const ab=G.abilList||[],cur=G.curses||[],nm=G.monsters.length;
+ for(const a of ab)G.revealed[a]=true;
+ const lines=(arr,N,D)=>arr.map(k=>'  · '+L(N[k][0],N[k][1])+' — '+L(D[k][0],D[k][1])).join('\n');
+ const ko='이 집은 층에 들어설 때마다, 그리고 당신이 쓰러질 때마다 규칙을 새로 쓴다.\n이번에 정해진 것은 이렇다.\n\n[이 층의 괴물] '+nm+'마리\n'+(ab.length?lines(ab,ABIL_NAME,ABIL_DESC):'  · 아무 능력도 없다')+'\n\n[당신의 저주]\n'+(cur.length?lines(cur,CURSE_NAME,CURSE_DESC):'  · 없다');
+ const en='Each time you enter a floor — and each time you fall — the house rewrites its rules.\nThis is what it chose now.\n\n[Monsters on this floor] '+nm+'\n'+(ab.length?lines(ab,ABIL_NAME,ABIL_DESC):'  · No abilities')+'\n\n[Your curses]\n'+(cur.length?lines(cur,CURSE_NAME,CURSE_DESC):'  · None');
+ G.state='read';showScreen('doc',{t:['시작 지점의 쪽지','Note at the Start'],x:[ko,en]});
 }
 /* ----- 트윈 / 타이머 / 대사 ----- */
 function tween(o,k,to,dur){if(G.skip||dur<=0){o[k]=to;return Promise.resolve()}return new Promise(res=>G.tweens.push({o,k,a:o[k],b:to,t:0,d:dur,res}))}
@@ -1307,6 +1332,7 @@ async function launch(mode,dk,custom){
 }
 function announceFloor(){
  const c=G.curses;if(G.mode!=='story'&&c.length)toast(L('저주: ','Curse: ')+c.map(x=>L(CURSE_NAME[x][0],CURSE_NAME[x][1])).join(', '),3500);
+ if(G.items&&G.items.some(i=>i.type==='note'&&!i.read))toast(L('시작 지점에 쪽지가 놓여 있다','A note lies where you woke'),3600);
  toast(L('현재 ','Now on ')+floorLabel(G.floor)+(G.keyNeed?L(' — 열쇠 ',' — keys ')+G.keyNeed:'')+(G.brNeed?L(' / 차단기 ',' / breakers ')+G.brNeed:''),3200);
 }
 async function continueGame(){
@@ -1461,7 +1487,7 @@ const SCREENS={
   const sel=(k,lb,opts)=>`<div class="row"><label>${lb}</label><select data-s="${k}" data-num="1">${opts.map(o=>`<option value="${o[0]}" ${String(S[k])===String(o[0])?'selected':''}>${L(o[1],o[2])}</option>`).join('')}</select></div>`;
   if(tab==='gfx')h+=`<div class="row"><label>${L('전체화면','Fullscreen')}</label><button class="mb sm" data-act="fs">${L('전환','Toggle')}</button></div>`+rg('res',L('해상도 / 화면 배율','Resolution / scale'),.5,1,.05)+rg('shake',L('화면 흔들림','Screen shake'),0,1.5,.1)+sel('lightQ',L('조명 품질','Light quality'),[[0,'낮음','Low'],[1,'보통','Medium'],[2,'높음','High']])+ck('shadows',L('그림자 (벽이 빛을 차단)','Shadows (walls block light)'))+sel('particles',L('파티클 효과','Particles'),[[0,'끄기','Off'],[1,'보통','Normal'],[2,'많이','Many']])+ck('vfx',L('시각 효과 (빛 번짐 등)','Visual effects'))+rg('camSmooth',L('카메라 부드러움','Camera smoothness'),.02,.4,.02)+rg('brightness',L('화면 밝기','Brightness'),.6,1.5,.05)+rg('glow',L('발광 효과','Glow strength'),.5,1.5,.1);
   else if(tab==='snd')h+=rg('master',L('전체 음량','Master'),0,1,.05)+rg('music',L('배경음악','Music'),0,1,.05)+rg('sfx',L('효과음','SFX'),0,1,.05)+rg('monster',L('괴물 소리','Monster'),0,1,.05)+rg('ambient',L('환경음','Ambient'),0,1,.05)+rg('steps',L('발소리','Footsteps'),0,1,.05)+rg('cut',L('컷신 음량','Cutscene'),0,1,.05);
-  else if(tab==='ctl'){h+=rg('moveSens',L('이동 감도','Move speed sensitivity'),.6,1.4,.05)+rg('joySize',L('모바일 조이스틱 크기','Joystick size'),.6,1.6,.05)+rg('btnSize',L('모바일 버튼 크기','Button size'),.7,1.5,.05)+sel('btnSide',L('모바일 버튼 위치','Button side'),[['right','오른쪽','Right'],['left','왼쪽','Left']])+rg('btnOpacity',L('버튼 투명도','Button opacity'),.2,1,.05)+rg('touchSens',L('터치 감도','Touch sensitivity'),.5,1.5,.05);
+  else if(tab==='ctl'){h+=rg('moveSens',L('이동 감도','Move speed sensitivity'),.6,1.4,.05)+sel('ctlMode',L('모바일 이동 방식','Mobile movement control'),[['joystick','가상 조이스틱','Virtual joystick'],['dpad','방향키 버튼','Arrow buttons']])+rg('joySize',L('모바일 조이스틱 크기','Joystick size'),.6,1.6,.05)+rg('btnSize',L('모바일 버튼 크기','Button size'),.7,1.5,.05)+sel('btnSide',L('모바일 버튼 위치','Button side'),[['right','오른쪽','Right'],['left','왼쪽','Left']])+rg('btnOpacity',L('버튼 투명도','Button opacity'),.2,1,.05)+rg('touchSens',L('터치 감도','Touch sensitivity'),.5,1.5,.05);
    const names={up:['위','Up'],down:['아래','Down'],left:['왼쪽','Left'],right:['오른쪽','Right'],interact:['상호작용','Interact'],drop:['버리기/설치','Drop/Place'],light:['전등 켜기/끄기','Lamp toggle'],run:['달리기','Run'],pause:['일시정지','Pause'],skip:['대화 넘기기','Advance dialog']};
    h+='<h3>'+L('키보드 키 변경 (클릭 후 키 입력)','Key bindings (click, then press a key)')+'</h3>'+Object.keys(names).map(k=>`<div class="row"><label>${L(names[k][0],names[k][1])}</label><button class="mb sm" data-act="rebind" data-k="${k}">${esc(S.keys[k].replace('Key','').replace('Arrow','↔ '))}</button></div>`).join('')+`<div style="text-align:center">${btn('keyreset',L('키 기본값으로','Reset keys'))}</div>`}
   else h+=ck('subs',L('자막 활성화','Subtitles'))+ck('autoAdv',L('컷신 자동 넘김','Auto-advance dialogue'))+ck('allowSkip',L('컷신 건너뛰기 허용','Allow cutscene skip'))+ck('hud',L('HUD 표시','Show HUD'))+sel('lang',L('언어 / Language','Language'),[['ko','한국어','한국어'],['en','English','English']])+sel('autosave',L('자동 저장 주기','Autosave interval'),[[0,'끄기','Off'],[30,'30초','30 s'],[60,'1분','1 min'],[120,'2분','2 min'],[300,'5분','5 min']]);
@@ -1530,7 +1556,7 @@ scr.addEventListener('input',e=>{
  const t=e.target;
  if(t.dataset.s){const k=t.dataset.s;S[k]=t.type==='checkbox'?t.checked:(t.dataset.num?(isNaN(+t.value)?t.value:+t.value):+t.value);
   if(t.type==='range'){const sp=scr.querySelector(`[data-sv="${k}"]`);if(sp)sp.textContent=(+S[k]).toFixed(2).replace(/\.?0+$/,'')}
-  saveSettings();auVol();if(['res','lightQ'].includes(k))resize();if(['btnSize','btnSide','btnOpacity','joySize'].includes(k))applyTouchLayout();
+  saveSettings();auVol();if(['res','lightQ'].includes(k))resize();if(['btnSize','btnSide','btnOpacity','joySize','ctlMode'].includes(k))applyTouchLayout();
   if(k==='hud'&&G)$('hud').style.display=S.hud?'block':'none';
   if(k==='lang'&&t.tagName==='SELECT')showScreen('settings',{tab:'game'});}
  else if(t.dataset.c){const k=t.dataset.c;CUST[k]=t.type==='checkbox'?t.checked:+t.value;if(t.type==='range'){const sp=scr.querySelector(`[data-v="${k}"]`);if(sp)sp.textContent=CUST[k]}store.set('eth_custom_v1',CUST)}
@@ -1556,7 +1582,9 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&G&&G.state
 function applyTouchLayout(){
  const m=Math.min(innerWidth,innerHeight),bs=clamp(m*.17*S.btnSize,50,118);const tp=$('touch');
  tp.style.setProperty('--bs',bs+'px');const b=$('btns');b.style.left=S.btnSide==='left'?'max(14px,env(safe-area-inset-left))':'auto';b.style.right=S.btnSide==='left'?'auto':'max(14px,env(safe-area-inset-right))';b.style.opacity=S.btnOpacity;
- const jz=$('joyzone');jz.style.left=S.btnSide==='left'?'45%':'0';
+ const jz=$('joyzone'),dp=S.ctlMode==='dpad';jz.style.left=S.btnSide==='left'?'45%':'0';jz.style.display=dp?'none':'block';
+ $('joybase').style.display='none';INP.joy.on=false;INP.joy.x=0;INP.joy.y=0;INP.dpad.u=INP.dpad.d=INP.dpad.l=INP.dpad.r=0;
+ const dpd=$('dpad');dpd.style.display=dp?'grid':'none';dpd.style.left=S.btnSide==='left'?'auto':'max(14px,env(safe-area-inset-left))';dpd.style.right=S.btnSide==='left'?'max(14px,env(safe-area-inset-right))':'auto';dpd.style.opacity=S.btnOpacity;
  $('tbL').querySelector('small').textContent=L('전등','Lamp');$('tbR').textContent=L('달리기','RUN');$('tbQ').innerHTML='Q<small>'+L('버리기','Drop')+'</small>';$('tbE').innerHTML='E<small>'+L('상호작용','Use')+'</small>';
  $('skipbtn').textContent=L('건너뛰기 ▶▶','Skip ▶▶');$('bAb').title=L('능력치','Abilities');
 }
@@ -1573,6 +1601,16 @@ function applyTouchLayout(){
  tap('tbE',doInteract);tap('tbQ',dropItem);tap('tbL',toggleLamp);
  const rb=$('tbR');rb.addEventListener('pointerdown',e=>{e.preventDefault();INP.touchRun=true;rb.classList.add('on')});
  const ru=()=>{INP.touchRun=false;rb.classList.remove('on')};rb.addEventListener('pointerup',ru);rb.addEventListener('pointercancel',ru);rb.addEventListener('pointerleave',ru);
+})();
+(function(){ // 방향키 버튼: 하나의 패드에서 손가락을 미끄러뜨려도 방향이 바뀌고, 두 방향 동시(대각선)도 가능
+ const pad=$('dpad'),bs=[...pad.querySelectorAll('.tb')];let pid=null;
+ const set=(e)=>{const r=pad.getBoundingClientRect(),nx=(e.clientX-r.left)/r.width*2-1,ny=(e.clientY-r.top)/r.height*2-1,th=.28;
+  INP.dpad.l=nx<-th?1:0;INP.dpad.r=nx>th?1:0;INP.dpad.u=ny<-th?1:0;INP.dpad.d=ny>th?1:0;
+  bs.forEach(b=>b.classList.toggle('on',!!INP.dpad[b.dataset.d]))};
+ const clear=()=>{pid=null;INP.dpad.u=INP.dpad.d=INP.dpad.l=INP.dpad.r=0;bs.forEach(b=>b.classList.remove('on'))};
+ pad.addEventListener('pointerdown',e=>{e.preventDefault();auInit();if(G&&G.dialog){advanceDialog();return}if(pid!==null)return;pid=e.pointerId;try{pad.setPointerCapture(pid)}catch(x){}set(e)});
+ pad.addEventListener('pointermove',e=>{if(e.pointerId===pid)set(e)});
+ pad.addEventListener('pointerup',e=>{if(e.pointerId===pid)clear()});pad.addEventListener('pointercancel',e=>{if(e.pointerId===pid)clear()});
 })();
 $('sub').addEventListener('pointerdown',e=>{e.preventDefault();advanceDialog()});
 $('skipbtn').addEventListener('click',()=>{if(G&&G.cutId){flushSkip()}});
