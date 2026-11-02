@@ -806,10 +806,30 @@ function updateMonster(m,dt){
  // 접촉 사망
  if(p.alive&&G.state==='play'&&dist(m.x,m.y,p.x,p.y)<m.r+.2&&aiOn!==undefined)die('monster');
 }
+function pushMon(m,dx,dy){const M=G.map;
+ if(!collides(M,m.x+dx,m.y+dy,.2)){m.x+=dx;m.y+=dy}else if(!collides(M,m.x+dx,m.y,.2))m.x+=dx;else if(!collides(M,m.x,m.y+dy,.2))m.y+=dy}
+// 막혀서 못 가는 괴물을 감지: 가려는 중인데 1.6초 동안 거의 못 움직였으면 잠시 서로를 통과하고 길을 다시 잡는다
+function watchStuck(m,dt){
+ if(m.ghost>0)m.ghost-=dt;
+ const going=m.stun<=0&&m.spawn<=0&&m.wait<=0&&m.openT<=0&&m.state!=='search'&&m.path&&m.pi<m.path.length;
+ if(!going){m.chkT=0;m.chkX=m.x;m.chkY=m.y;return}
+ m.chkT=(m.chkT||0)+dt;
+ if(m.chkT>=1.6){const mv=Math.hypot(m.x-m.chkX,m.y-m.chkY);m.chkT=0;m.chkX=m.x;m.chkY=m.y;
+  if(mv<.5){m.ghost=2.2;m.path=null;m.repath=0;if(m.state==='wander')m.wait=0}}
+}
+const isIdle=m=>m.wait>0||!(m.path&&m.pi<m.path.length);
 function updateMonsters(dt){
  for(const m of G.monsters)updateMonster(m,dt);
- const a=G.monsters;for(let i=0;i<a.length;i++)for(let j=i+1;j<a.length;j++){const d=dist(a[i].x,a[i].y,a[j].x,a[j].y);if(d<.7&&d>.001){const k=(.7-d)*.5,dx=(a[i].x-a[j].x)/d,dy=(a[i].y-a[j].y)/d;
-  if(!collides(G.map,a[i].x+dx*k,a[i].y+dy*k,.2)){a[i].x+=dx*k;a[i].y+=dy*k}if(!collides(G.map,a[j].x-dx*k,a[j].y-dy*k,.2)){a[j].x-=dx*k;a[j].y-=dy*k}}}
+ const a=G.monsters;
+ // 겹침 해소: 먼저 생성된(우선순위 높은) 괴물은 밀리지 않고 뒤의 괴물만 비켜 준다.
+ // 서로 똑같이 밀어내면 좁은 문·복도에서 맞부딪혀 영원히 멈추기 때문에 한쪽만 양보한다.
+ for(let i=0;i<a.length;i++)for(let j=i+1;j<a.length;j++){
+  let P=a[i],Y=a[j];if(P.stun>0||Y.stun>0||P.ghost>0||Y.ghost>0)continue;
+  const d=dist(P.x,P.y,Y.x,Y.y);if(d>=.7)continue;
+  if(isIdle(P)&&!isIdle(Y)){const t=P;P=Y;Y=t} // 멈춰 서 있는 쪽이 걸어가는 쪽에게 먼저 비켜 준다
+  let ux,uy;if(d>.001){ux=(Y.x-P.x)/d;uy=(Y.y-P.y)/d}else{const r=Math.random()*6.283;ux=Math.cos(r);uy=Math.sin(r)}
+  const k=.7-d;pushMon(Y,ux*k,uy*k)}
+ for(const m of a)watchStuck(m,dt);
 }
 function updateReveal(){
  const p=G.player,M=G.map;if(G.D.reveal)for(const k of ABILS)G.revealed[k]=G.monsters.some(m=>m.abil[k]);
@@ -1594,7 +1614,7 @@ function applyTouchLayout(){
  jz.addEventListener('pointerdown',e=>{e.preventDefault();auInit();if(G&&G.dialog){advanceDialog();return}if(pid!==null)return;pid=e.pointerId;try{jz.setPointerCapture(pid)}catch(x){}
   R=Math.min(innerWidth,innerHeight)*.13*S.joySize;cx=e.clientX;cy=e.clientY;base.style.display='block';base.style.width=base.style.height=R*2+'px';base.style.left=(cx-R)+'px';base.style.top=(cy-R)+'px';st.style.width=st.style.height=R*.84+'px';setStick(0,0);INP.joy.on=true;INP.joy.x=0;INP.joy.y=0});
  jz.addEventListener('pointermove',e=>{if(e.pointerId!==pid)return;let dx=(e.clientX-cx)/R,dy=(e.clientY-cy)/R;const m=Math.hypot(dx,dy);if(m>1){dx/=m;dy/=m}setStick(dx,dy);const mm=Math.min(1,m);
-  if(mm<.14){INP.joy.x=0;INP.joy.y=0}else{const k=Math.min(1,(mm-.14)/.6)*S.touchSens;INP.joy.x=dx/Math.max(m,.001)*Math.min(1,k);INP.joy.y=dy/Math.max(m,.001)*Math.min(1,k)}});
+  if(mm<.14){INP.joy.x=0;INP.joy.y=0}else{const k=Math.min(1,(mm-.14)/.6)*S.touchSens;INP.joy.x=dx/Math.max(mm,.001)*Math.min(1,k);INP.joy.y=dy/Math.max(mm,.001)*Math.min(1,k)}});
  const end=e=>{if(e.pointerId!==pid)return;pid=null;base.style.display='none';INP.joy.on=false;INP.joy.x=0;INP.joy.y=0};
  jz.addEventListener('pointerup',end);jz.addEventListener('pointercancel',end);
  const tap=(id,fn)=>$(id).addEventListener('pointerdown',e=>{e.preventDefault();auInit();if(G&&G.dialog){advanceDialog();return}if(G&&G.state==='play')fn()});
